@@ -96,7 +96,6 @@ func main() {
 	go func() {
 		http.Get("https://hits.spiritlhl.net/gostun.svg?action=hit&title=Hits&title_bg=%23555555&count_bg=%230eecf8&edge_flat=false")
 	}()
-	fmt.Println("Repo:", "https://github.com/oneclickvirt/gostun")
 	if showVersion {
 		fmt.Println(model.GoStunVersion)
 		return
