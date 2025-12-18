@@ -182,7 +182,7 @@ func main() {
 				break
 			}
 			if model.EnableLoger {
-				model.Log.Warnf("[%s] Server %s failed to determine NAT type using %s, trying next server", currentProtocol, addrStr, rfcMethod)
+				model.Log.Warnf("[%s] failed to determine NAT type using %s, try next server", currentProtocol, rfcMethod)
 			}
 		}
 		if !successfulDetection && model.EnableLoger {
