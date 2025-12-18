@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -80,7 +81,7 @@ func main() {
 	gostunFlag.BoolVar(&showVersion, "v", false, "Display version information")
 	gostunFlag.IntVar(&model.Verbose, "verbose", 0, "Set verbosity level")
 	gostunFlag.IntVar(&model.Timeout, "timeout", 3, "Set timeout in seconds for STUN server response")
-	gostunFlag.StringVar(&model.AddrStr, "server", "stun.voipgate.com:3478", "Specify STUN server address")
+	gostunFlag.StringVar(&model.AddrStr, "server", model.AddrStr, "Specify STUN server address")
 	gostunFlag.BoolVar(&model.EnableLoger, "e", true, "Enable logging functionality")
 	gostunFlag.StringVar(&model.IPVersion, "type", "ipv4", "Specify ip test version: ipv4, ipv6 or both")
 	gostunFlag.Parse(os.Args[1:])
@@ -109,11 +110,26 @@ func main() {
 		case 3:
 			logLevel = logging.LogLevelTrace
 		}
-		model.Log = logging.NewDefaultLeveledLoggerForScope("", logLevel, os.Stdout)
+		// Remove timestamps from INFO/WARNING/ERROR to make output easier to read on routers.
+		// DefaultPionLeveledLogger uses log.LstdFlags which prints "YYYY/MM/DD HH:MM:SS".
+		model.Log = logging.NewDefaultLeveledLoggerForScope("", logLevel, os.Stdout).
+			WithTraceLogger(log.New(os.Stdout, "TRACE: ", 0)).
+			WithDebugLogger(log.New(os.Stdout, "DEBUG: ", 0)).
+			WithInfoLogger(log.New(os.Stdout, "INFO: ", 0)).
+			WithWarnLogger(log.New(os.Stdout, "", 0)).
+			WithErrorLogger(log.New(os.Stdout, "ERROR: ", 0))
 	}
 	var addrStrList []string
 	var originalIPVersion = model.IPVersion
-	if strings.Contains(os.Args[0], "-server") || model.AddrStr != "stun.voipgate.com:3478" {
+
+	hasServerFlag := false
+	for _, arg := range os.Args[1:] {
+		if arg == "-server" || strings.HasPrefix(arg, "-server=") {
+			hasServerFlag = true
+			break
+		}
+	}
+	if hasServerFlag {
 		addrStrList = []string{model.AddrStr}
 	} else {
 		addrStrList = model.GetDefaultServers(model.IPVersion)
@@ -141,8 +157,8 @@ func main() {
 			} else {
 				currentProtocol = originalIPVersion
 			}
-			if model.EnableLoger {
-				model.Log.Infof("Testing server %s with protocol %s using %s", addrStr, currentProtocol, rfcMethod)
+			if model.EnableLoger && rfcMethod == "RFC5780" {
+				fmt.Printf("[%s] using stun server: %s\n", currentProtocol, addrStr)
 			}
 			success, err := tryRFCMethod(addrStr, rfcMethod)
 			if err != nil && model.EnableLoger {
