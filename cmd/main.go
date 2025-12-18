@@ -186,7 +186,7 @@ func main() {
 			}
 		}
 		if !successfulDetection && model.EnableLoger {
-			model.Log.Warnf("All servers failed with %s method, trying next RFC method", rfcMethod)
+			model.Log.Warnf("All servers failed with %s method, try next RFC method", rfcMethod)
 		}
 	}
 	model.IPVersion = originalIPVersion
