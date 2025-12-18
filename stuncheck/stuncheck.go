@@ -1,8 +1,11 @@
 package stuncheck
 
 import (
+	"context"
 	"errors"
 	"net"
+	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/oneclickvirt/gostun/model"
@@ -430,9 +433,32 @@ func connect(addrStr string) (*stunServerConn, error) {
 		}
 		return nil, err
 	}
-	c, err := net.ListenUDP(networkType, nil)
+	listenConfig := net.ListenConfig{}
+	if model.InterfaceName != "" {
+		if runtime.GOOS != "linux" {
+			if model.EnableLoger {
+				model.Log.Warnf("Interface binding (-i) is only supported on linux; ignoring %q", model.InterfaceName)
+			}
+		} else {
+			listenConfig.Control = func(network, address string, c syscall.RawConn) error {
+				var ctrlErr error
+				if err := c.Control(func(fd uintptr) {
+					ctrlErr = syscall.SetsockoptString(int(fd), syscall.SOL_SOCKET, syscall.SO_BINDTODEVICE, model.InterfaceName)
+				}); err != nil {
+					return err
+				}
+				return ctrlErr
+			}
+		}
+	}
+	packetConn, err := listenConfig.ListenPacket(context.Background(), networkType, "")
 	if err != nil {
 		return nil, err
+	}
+	c, ok := packetConn.(*net.UDPConn)
+	if !ok {
+		_ = packetConn.Close()
+		return nil, errors.New("unexpected packet connection type")
 	}
 	if model.EnableLoger {
 		model.Log.Infof("[%s] Local address: %s", currentProtocol, c.LocalAddr())

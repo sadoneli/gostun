@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -84,6 +85,7 @@ func main() {
 	gostunFlag.StringVar(&model.AddrStr, "server", model.AddrStr, "Specify STUN server address")
 	gostunFlag.BoolVar(&model.EnableLoger, "e", true, "Enable logging functionality")
 	gostunFlag.StringVar(&model.IPVersion, "type", "ipv4", "Specify ip test version: ipv4, ipv6 or both")
+	gostunFlag.StringVar(&model.InterfaceName, "i", "", "Bind to a network interface (linux only)")
 	gostunFlag.Parse(os.Args[1:])
 	if help {
 		fmt.Printf("Usage: %s [options]\n", os.Args[0])
@@ -118,6 +120,12 @@ func main() {
 			WithInfoLogger(log.New(os.Stdout, "INFO: ", 0)).
 			WithWarnLogger(log.New(os.Stdout, "", 0)).
 			WithErrorLogger(log.New(os.Stdout, "ERROR: ", 0))
+	}
+	if model.InterfaceName != "" {
+		if _, err := net.InterfaceByName(model.InterfaceName); err != nil {
+			fmt.Fprintf(os.Stderr, "invalid interface %q: %v\n", model.InterfaceName, err)
+			return
+		}
 	}
 	var addrStrList []string
 	var originalIPVersion = model.IPVersion
