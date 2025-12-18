@@ -2,6 +2,7 @@ package stuncheck
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"time"
 
@@ -430,7 +431,17 @@ func connect(addrStr string) (*stunServerConn, error) {
 		}
 		return nil, err
 	}
-	c, err := net.ListenUDP(networkType, nil)
+	var laddr *net.UDPAddr
+	if model.BindInterface != "" {
+		laddr, err = getBindAddrByInterface(networkType, model.BindInterface)
+		if err != nil {
+			if model.EnableLoger {
+				model.Log.Warnf("[%s] Error binding interface %s: %v", currentProtocol, model.BindInterface, err)
+			}
+			return nil, err
+		}
+	}
+	c, err := net.ListenUDP(networkType, laddr)
 	if err != nil {
 		return nil, err
 	}
@@ -445,6 +456,48 @@ func connect(addrStr string) (*stunServerConn, error) {
 		RemoteAddr:  addr,
 		messageChan: mChan,
 	}, nil
+}
+
+func getBindAddrByInterface(networkType, ifName string) (*net.UDPAddr, error) {
+	iface, err := net.InterfaceByName(ifName)
+	if err != nil {
+		return nil, err
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return nil, err
+	}
+	wantV6 := networkType == "udp6"
+	for _, a := range addrs {
+		var ip net.IP
+		switch v := a.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
+		}
+		if ip == nil {
+			continue
+		}
+		if wantV6 {
+			if ip.To4() != nil {
+				continue
+			}
+			if ip.IsLinkLocalUnicast() {
+				continue
+			}
+			return &net.UDPAddr{IP: ip, Port: 0}, nil
+		}
+		ip4 := ip.To4()
+		if ip4 == nil {
+			continue
+		}
+		return &net.UDPAddr{IP: ip4, Port: 0}, nil
+	}
+	if wantV6 {
+		return nil, fmt.Errorf("no usable IPv6 address on interface %s", ifName)
+	}
+	return nil, fmt.Errorf("no usable IPv4 address on interface %s", ifName)
 }
 
 func (c *stunServerConn) roundTrip(msg *stun.Message, addr net.Addr) (*stun.Message, error) {

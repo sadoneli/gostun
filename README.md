@@ -63,8 +63,12 @@ gostun
 Usage: gostun [options]
   -e    Enable logging functionality (default true)
   -h    Display help information
+  -i string
+        Bind local address by interface name (e.g. br0, ppp0)
+  -interface string
+        Bind local address by interface name (e.g. br0, ppp0)
   -server string
-        Specify STUN server address (default "stun.voipgate.com:3478")
+        Specify STUN server address (default "stun.miwifi.com:3478")
   -timeout int
         Set timeout in seconds for STUN server response (default 3)
   -type string

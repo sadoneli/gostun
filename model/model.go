@@ -13,6 +13,7 @@ var (
 	NatFilteringBehavior string
 	EnableLoger          = true
 	IPVersion            = "ipv4"
+	BindInterface        = ""
 )
 
 func GetDefaultServers(IPVersion string) []string {

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -82,6 +83,8 @@ func main() {
 	gostunFlag.IntVar(&model.Verbose, "verbose", 0, "Set verbosity level")
 	gostunFlag.IntVar(&model.Timeout, "timeout", 3, "Set timeout in seconds for STUN server response")
 	gostunFlag.StringVar(&model.AddrStr, "server", model.AddrStr, "Specify STUN server address")
+	gostunFlag.StringVar(&model.BindInterface, "i", "", "Bind local address by interface name (e.g. br0, ppp0)")
+	gostunFlag.StringVar(&model.BindInterface, "interface", "", "Bind local address by interface name (e.g. br0, ppp0)")
 	gostunFlag.BoolVar(&model.EnableLoger, "e", true, "Enable logging functionality")
 	gostunFlag.StringVar(&model.IPVersion, "type", "ipv4", "Specify ip test version: ipv4, ipv6 or both")
 	gostunFlag.Parse(os.Args[1:])
@@ -97,6 +100,12 @@ func main() {
 	if showVersion {
 		fmt.Println(model.GoStunVersion)
 		return
+	}
+	if model.BindInterface != "" {
+		if _, err := net.InterfaceByName(model.BindInterface); err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid interface %q: %v\n", model.BindInterface, err)
+			os.Exit(2)
+		}
 	}
 	if model.EnableLoger {
 		var logLevel logging.LogLevel
@@ -137,6 +146,7 @@ func main() {
 	// RFC methods in order of preference: 5780 -> 5389 -> 3489
 	rfcMethods := []string{"RFC5780", "RFC5389", "RFC3489"}
 	successfulDetection := false
+	printedIface := false
 	for _, rfcMethod := range rfcMethods {
 		if successfulDetection {
 			break
@@ -158,6 +168,10 @@ func main() {
 				currentProtocol = originalIPVersion
 			}
 			if model.EnableLoger && rfcMethod == "RFC5780" {
+				if !printedIface && model.BindInterface != "" {
+					fmt.Printf("[%s] using interface: %s\n", currentProtocol, model.BindInterface)
+					printedIface = true
+				}
 				fmt.Printf("[%s] using stun server: %s\n", currentProtocol, addrStr)
 			}
 			success, err := tryRFCMethod(addrStr, rfcMethod)
