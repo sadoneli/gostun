@@ -8,6 +8,7 @@ var (
 	AddrStr              = "stun.miwifi.com:3478"
 	Timeout              = 3
 	Verbose              = 0
+	UDPSendCount         = 2
 	Log                  logging.LeveledLogger
 	NatMappingBehavior   string
 	NatFilteringBehavior string

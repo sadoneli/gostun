@@ -1,6 +1,7 @@
 package stuncheck
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -509,6 +510,10 @@ func (c *stunServerConn) roundTrip(msg *stun.Message, addr net.Addr) (*stun.Mess
 			model.Log.Debugf("\t%v (l=%v)", attr, attr.Length)
 		}
 	}
+	sendCount := model.UDPSendCount
+	if sendCount < 1 {
+		sendCount = 1
+	}
 	_, err := c.conn.WriteTo(msg.Raw, addr)
 	if err != nil {
 		if model.EnableLoger {
@@ -516,17 +521,36 @@ func (c *stunServerConn) roundTrip(msg *stun.Message, addr net.Addr) (*stun.Mess
 		}
 		return nil, err
 	}
-	select {
-	case m, ok := <-c.messageChan:
-		if !ok {
-			return nil, errResponseMessage
+	if sendCount > 1 {
+		raw := append([]byte(nil), msg.Raw...)
+		go func() {
+			for i := 1; i < sendCount; i++ {
+				time.Sleep(150 * time.Millisecond)
+				_, _ = c.conn.WriteTo(raw, addr)
+			}
+		}()
+	}
+
+	timer := time.NewTimer(time.Duration(model.Timeout) * time.Second)
+	defer timer.Stop()
+	for {
+		select {
+		case m, ok := <-c.messageChan:
+			if !ok {
+				return nil, errResponseMessage
+			}
+			if m == nil {
+				continue
+			}
+			if bytes.Equal(m.TransactionID[:], msg.TransactionID[:]) {
+				return m, nil
+			}
+		case <-timer.C:
+			if model.EnableLoger {
+				model.Log.Infof("Timed out waiting for response from server %v", addr)
+			}
+			return nil, errTimedOut
 		}
-		return m, nil
-	case <-time.After(time.Duration(model.Timeout) * time.Second):
-		if model.EnableLoger {
-			model.Log.Infof("Timed out waiting for response from server %v", addr)
-		}
-		return nil, errTimedOut
 	}
 }
 

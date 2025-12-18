@@ -82,6 +82,7 @@ func main() {
 	gostunFlag.BoolVar(&showVersion, "v", false, "Display version information")
 	gostunFlag.IntVar(&model.Verbose, "verbose", 0, "Set verbosity level")
 	gostunFlag.IntVar(&model.Timeout, "timeout", 3, "Set timeout in seconds for STUN server response")
+	gostunFlag.IntVar(&model.UDPSendCount, "dup", 2, "Duplicate each UDP request this many times to reduce packet loss (default 2)")
 	gostunFlag.StringVar(&model.AddrStr, "server", model.AddrStr, "Specify STUN server address")
 	gostunFlag.StringVar(&model.BindInterface, "i", "", "Bind local address by interface name (e.g. br0, ppp0)")
 	gostunFlag.StringVar(&model.BindInterface, "interface", "", "Bind local address by interface name (e.g. br0, ppp0)")
@@ -105,6 +106,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Invalid interface %q: %v\n", model.BindInterface, err)
 			os.Exit(2)
 		}
+	}
+	if model.UDPSendCount < 1 {
+		model.UDPSendCount = 1
 	}
 	if model.EnableLoger {
 		var logLevel logging.LogLevel
