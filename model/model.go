@@ -30,6 +30,7 @@ func GetDefaultServers(IPVersion string) []string {
 		}
 	case "ipv4":
 		return []string{
+			"stun1.ddnsto.com:3501",
 			"stun.miwifi.com:3478",
 			"stun.fitauto.ru:3478",
 			"stun.hot-chilli.net:3478",
@@ -46,6 +47,7 @@ func GetDefaultServers(IPVersion string) []string {
 		}
 	default:
 		return []string{
+			"stun1.ddnsto.com:3501",
 			"stun.miwifi.com:3478",
 			"stun.fitauto.ru:3478",
 			"stun.hot-chilli.net:3478",
